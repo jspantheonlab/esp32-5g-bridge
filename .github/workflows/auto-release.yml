@@ -1,0 +1,76 @@
+name: Auto release
+
+# After a PR that changes firmware or the app is merged to main: tag the next version and
+# publish a release. Bump type comes from the merged PR's labels:
+#   release:major → vX+1.0.0   release:minor → vX.Y+1.0   (none) → patch   release:skip → no release
+# Docs- or CI-only merges don't match the path filter and never release.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware/**"
+      - "firmware-rs/**"
+      - "ios/**"
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Tag next version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.next.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: next
+        name: Compute and push tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          labels=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" --jq '.[0].labels[].name' 2>/dev/null || true)
+          if grep -qx 'release:skip' <<<"$labels"; then
+            echo "PR is labelled release:skip; not releasing."
+            exit 0
+          fi
+          if git tag --points-at "$GITHUB_SHA" | grep -q '^v'; then
+            echo "Commit is already tagged; not releasing again."
+            exit 0
+          fi
+
+          bump=patch
+          grep -qx 'release:minor' <<<"$labels" && bump=minor
+          grep -qx 'release:major' <<<"$labels" && bump=major
+
+          last=$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)
+          IFS=. read -r major minor patch <<<"${last:-v0.0.0}"
+          major=${major#v}
+          case "$bump" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+          tag="v${major}.${minor}.${patch}"
+          echo "Last release ${last:-none}, bump ${bump} → ${tag}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "$tag" "$GITHUB_SHA"
+          git push origin "$tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Release
+    needs: tag
+    if: needs.tag.outputs.tag != ''
+    # Tags pushed with GITHUB_TOKEN don't trigger other workflows, so call the release build directly.
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.tag.outputs.tag }}
