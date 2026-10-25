@@ -49,6 +49,8 @@ struct StatusView: View {
                         LabeledContent("WAN IP", value: model.status.ip)
                     }
                     LabeledContent("Wi-Fi", value: model.status.ssid.isEmpty ? "—" : model.status.ssid)
+                    NavigationLink("Network name & password") { WifiSettingsView() }
+                        .disabled(model.link.state != .ready)
                 } header: {
                     Text("Hotspot")
                 } footer: {

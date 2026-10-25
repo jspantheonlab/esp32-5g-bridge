@@ -27,6 +27,13 @@ pub enum Command {
         id: u32,
     },
     SmsSync,
+    /// Ask for the current hotspot credentials (answered with `Event::Wifi`).
+    WifiGet,
+    /// Change the hotspot credentials; persisted and applied immediately.
+    WifiSet {
+        ssid: String,
+        pass: String,
+    },
 }
 
 pub fn parse_command(line: &str) -> Result<Command, serde_json::Error> {
@@ -85,6 +92,11 @@ pub enum Event {
         #[serde(skip_serializing_if = "Option::is_none")]
         err: Option<String>,
     },
+    /// Current hotspot credentials (reply to `wifi_get` and to a successful `wifi_set`).
+    Wifi {
+        ssid: String,
+        pass: String,
+    },
     Err {
         ctx: String,
         msg: String,
@@ -125,6 +137,11 @@ mod tests {
             Command::SmsSend { reference: "abc".into(), to: "+1".into(), body: "hi".into() }
         );
         assert_eq!(parse_command(r#"{"t":"sms_ack","id":3}"#).unwrap(), Command::SmsAck { id: 3 });
+        assert_eq!(parse_command(r#"{"t":"wifi_get"}"#).unwrap(), Command::WifiGet);
+        assert_eq!(
+            parse_command(r#"{"t":"wifi_set","ssid":"Bridge","pass":"s3cret-pass"}"#).unwrap(),
+            Command::WifiSet { ssid: "Bridge".into(), pass: "s3cret-pass".into() }
+        );
         assert!(parse_command(r#"{"t":"reboot"}"#).is_err());
         assert!(parse_command("not json").is_err());
     }
@@ -155,6 +172,9 @@ mod tests {
             Event::call(&call).to_line(),
             "{\"t\":\"call\",\"state\":\"incoming\",\"num\":\"+1\",\"dir\":\"in\"}\n"
         );
+
+        let wifi = Event::Wifi { ssid: "Bridge".into(), pass: "s3cret-pass".into() };
+        assert_eq!(wifi.to_line(), "{\"t\":\"wifi\",\"ssid\":\"Bridge\",\"pass\":\"s3cret-pass\"}\n");
 
         let sent = Event::SmsSent { reference: "r1".into(), ok: true, err: None };
         assert_eq!(sent.to_line(), "{\"t\":\"sms_sent\",\"ref\":\"r1\",\"ok\":true}\n");

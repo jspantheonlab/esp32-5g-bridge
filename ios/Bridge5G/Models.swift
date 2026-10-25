@@ -70,3 +70,23 @@ struct Conversation: Identifiable {
     var id: String { peer }
     var last: SMSMessage? { messages.last }
 }
+
+struct WifiCredentials: Equatable {
+    var ssid: String
+    var pass: String
+
+    /// Same rules as the firmware (bridge-core/src/wifi.rs). Returns nil when valid.
+    static func problem(ssid: String, pass: String) -> String? {
+        if ssid.isEmpty { return "Enter a network name." }
+        if ssid.utf8.count > 32 { return "Network name is longer than 32 bytes." }
+        if !(8...63).contains(pass.utf8.count) { return "Password must be 8 to 63 characters." }
+        if !pass.unicodeScalars.allSatisfy({ (0x20...0x7E).contains($0.value) }) {
+            return "Password may only use letters, digits, spaces and standard symbols (no emoji or accents)."
+        }
+        return nil
+    }
+}
+
+enum WifiSaveState: Equatable {
+    case idle, saving, saved, failed(String)
+}

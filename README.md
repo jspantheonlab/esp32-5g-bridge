@@ -62,7 +62,7 @@ idf.py menuconfig      # 5G Bridge → APN, hotspot SSID/password, BLE passkey, 
 idf.py build flash monitor
 ```
 
-**Change the hotspot password and the BLE passkey before you deploy.** The defaults are public.
+**Change the BLE passkey before you deploy, and change the hotspot password** in the app (Bridge → Hotspot → Network name & password) or at build time. The defaults are public.
 
 ### Rust alternative
 

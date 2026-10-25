@@ -11,3 +11,4 @@ pub mod power;
 pub mod protocol;
 pub mod sms;
 pub mod ucs2;
+pub mod wifi;

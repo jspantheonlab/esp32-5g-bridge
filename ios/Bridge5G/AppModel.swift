@@ -11,6 +11,9 @@ final class AppModel {
     let store = MessageStore()
     private(set) var status = ModemStatus()
     private(set) var lastError: String?
+    /// Hotspot credentials as last reported by the bridge (nil until requested).
+    private(set) var wifi: WifiCredentials?
+    private(set) var wifiSaveState: WifiSaveState = .idle
 
     init() {
         calls.send = { [weak self] in self?.link.send($0) }
@@ -23,6 +26,16 @@ final class AppModel {
         let msg = SMSMessage(peer: peer, body: body, date: .now, outgoing: true, status: .sending)
         store.add(msg)
         link.send(["t": "sms_send", "ref": msg.id.uuidString, "to": peer, "body": body])
+    }
+
+    func requestWifi() {
+        if wifiSaveState != .saving { wifiSaveState = .idle }
+        link.send(["t": "wifi_get"])
+    }
+
+    func saveWifi(_ credentials: WifiCredentials) {
+        wifiSaveState = .saving
+        link.send(["t": "wifi_set", "ssid": credentials.ssid, "pass": credentials.pass])
     }
 
     private func handle(_ msg: [String: Any]) {
@@ -40,6 +53,13 @@ final class AppModel {
                 let ok = msg["ok"] as? Bool ?? false
                 store.update(id: id, status: ok ? .sent : .failed, error: msg["err"] as? String)
             }
+        case "wifi":
+            if let ssid = msg["ssid"] as? String, let pass = msg["pass"] as? String {
+                wifi = WifiCredentials(ssid: ssid, pass: pass)
+                if wifiSaveState == .saving { wifiSaveState = .saved }
+            }
+        case "err" where msg["ctx"] as? String == "wifi_set":
+            wifiSaveState = .failed(msg["msg"] as? String ?? "The bridge rejected the settings.")
         case "err":
             lastError = "\(msg["ctx"] as? String ?? ""): \(msg["msg"] as? String ?? "")"
         default:

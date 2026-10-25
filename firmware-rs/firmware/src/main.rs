@@ -28,6 +28,7 @@ use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use log::{info, warn};
 
 use crate::ble::{BleLink, LinkEvent};
+use crate::hotspot::Hotspot;
 use crate::modem::{Modem, Supervisor};
 use crate::sms::SmsJob;
 use crate::voice::VoiceCmd;
@@ -44,8 +45,8 @@ fn main() -> anyhow::Result<()> {
     let sysloop = EspSystemEventLoop::take()?;
     let nvs = EspDefaultNvsPartition::take()?;
 
-    // Keep the Wi-Fi driver alive for the lifetime of the program.
-    let (_wifi, router) = hotspot::start(peripherals.modem, sysloop, nvs)?;
+    let hotspot = Hotspot::start(peripherals.modem, sysloop, nvs)?;
+    let router = hotspot.router();
 
     // Board wiring: PCM_CLK=GPIO4, PCM_SYNC=GPIO5, DIN=GPIO6 (modem PCM_DOUT), DOUT=GPIO7 (modem PCM_DIN).
     let i2s = audio::new_i2s(peripherals.i2s0, pins.gpio4, pins.gpio6, pins.gpio7, pins.gpio5)?;
@@ -58,7 +59,11 @@ fn main() -> anyhow::Result<()> {
         Arc::new(move |event: Event| link.send(&event.to_line()))
     };
 
-    let status = Arc::new(Mutex::new(Status { ssid: config::AP_SSID.into(), rat: "—".into(), ..Default::default() }));
+    let status = Arc::new(Mutex::new(Status {
+        ssid: hotspot.credentials().ssid.clone(),
+        rat: "—".into(),
+        ..Default::default()
+    }));
     let (urc_tx, urc_rx) = mpsc::sync_channel::<String>(32);
     let modem = Modem::init(urc_tx)?;
     let voice_tx = voice::spawn(modem.clone(), audio_tx, emit.clone())?;
@@ -94,43 +99,73 @@ fn main() -> anyhow::Result<()> {
     power::spawn(power::PowerMonitor { i2c, status: status.clone(), modem, emit: emit.clone() })?;
 
     info!("5G bridge started");
-    handle_link_events(link_rx, &status, &voice_tx, &sms_tx, &emit);
+    App { hotspot, status, voice: voice_tx, sms: sms_tx, emit }.run(link_rx);
     Ok(())
 }
 
-fn handle_link_events(
-    events: Receiver<LinkEvent>,
-    status: &Mutex<Status>,
-    voice: &mpsc::Sender<VoiceCmd>,
-    sms: &SyncSender<SmsJob>,
-    emit: &Emit,
-) {
-    let current_status = || status.lock().unwrap_or_else(|e| e.into_inner()).clone();
-    for event in events {
-        match event {
-            LinkEvent::Ready => {
-                emit(Event::Status(current_status()));
-                let _ = voice.send(VoiceCmd::Resend);
-                let _ = sms.try_send(SmsJob::Sync);
-            }
-            LinkEvent::Line(line) => match protocol::parse_command(&line) {
-                Ok(Command::Status) => emit(Event::Status(current_status())),
-                Ok(Command::Dial { num }) => _ = voice.send(VoiceCmd::Dial(num)),
-                Ok(Command::Answer) => _ = voice.send(VoiceCmd::Answer),
-                Ok(Command::Hangup) => _ = voice.send(VoiceCmd::Hangup),
-                Ok(Command::Dtmf { d }) => match d.chars().next() {
-                    Some(digit) => _ = voice.send(VoiceCmd::Dtmf(digit)),
-                    None => emit(Event::error("dtmf", "missing digit")),
-                },
-                Ok(Command::SmsSend { reference, to, body }) => {
-                    if sms.try_send(SmsJob::Send { reference: reference.clone(), to, body }).is_err() {
-                        emit(Event::SmsSent { reference, ok: false, err: Some("bridge busy".into()) });
-                    }
+/// Owns the hotspot and handles commands from the phone (main thread).
+struct App {
+    hotspot: Hotspot,
+    status: Arc<Mutex<Status>>,
+    voice: mpsc::Sender<VoiceCmd>,
+    sms: SyncSender<SmsJob>,
+    emit: Emit,
+}
+
+impl App {
+    fn status(&self) -> Status {
+        self.status.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    fn run(mut self, events: Receiver<LinkEvent>) {
+        for event in events {
+            match event {
+                LinkEvent::Ready => {
+                    (self.emit)(Event::Status(self.status()));
+                    let _ = self.voice.send(VoiceCmd::Resend);
+                    let _ = self.sms.try_send(SmsJob::Sync);
                 }
-                Ok(Command::SmsAck { id }) => _ = sms.try_send(SmsJob::Delete(id)),
-                Ok(Command::SmsSync) => _ = sms.try_send(SmsJob::Sync),
-                Err(e) => warn!("Bad command {line:?}: {e}"),
+                LinkEvent::Line(line) => match protocol::parse_command(&line) {
+                    Ok(command) => self.handle(command),
+                    Err(e) => warn!("Bad command {line:?}: {e}"),
+                },
+            }
+        }
+    }
+
+    fn handle(&mut self, command: Command) {
+        let emit = &self.emit;
+        match command {
+            Command::Status => emit(Event::Status(self.status())),
+            Command::Dial { num } => _ = self.voice.send(VoiceCmd::Dial(num)),
+            Command::Answer => _ = self.voice.send(VoiceCmd::Answer),
+            Command::Hangup => _ = self.voice.send(VoiceCmd::Hangup),
+            Command::Dtmf { d } => match d.chars().next() {
+                Some(digit) => _ = self.voice.send(VoiceCmd::Dtmf(digit)),
+                None => emit(Event::error("dtmf", "missing digit")),
+            },
+            Command::SmsSend { reference, to, body } => {
+                if self.sms.try_send(SmsJob::Send { reference: reference.clone(), to, body }).is_err() {
+                    emit(Event::SmsSent { reference, ok: false, err: Some("bridge busy".into()) });
+                }
+            }
+            Command::SmsAck { id } => _ = self.sms.try_send(SmsJob::Delete(id)),
+            Command::SmsSync => _ = self.sms.try_send(SmsJob::Sync),
+            Command::WifiGet => emit(self.wifi_event()),
+            Command::WifiSet { ssid, pass } => match self.hotspot.set_credentials(&ssid, &pass) {
+                Ok(()) => {
+                    modem::reapply_uplink(&self.hotspot.router());
+                    self.status.lock().unwrap_or_else(|e| e.into_inner()).ssid = ssid;
+                    emit(self.wifi_event());
+                    emit(Event::Status(self.status()));
+                }
+                Err(e) => emit(Event::error("wifi_set", e.to_string())),
             },
         }
+    }
+
+    fn wifi_event(&self) -> Event {
+        let creds = self.hotspot.credentials();
+        Event::Wifi { ssid: creds.ssid.clone(), pass: creds.pass.clone() }
     }
 }

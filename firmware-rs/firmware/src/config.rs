@@ -34,6 +34,8 @@ pub const ENABLE_IMS: bool = true;
 // Wi-Fi hotspot
 pub const AP_SSID: &str = env_or!("BRIDGE_AP_SSID", "5G-Bridge");
 pub const AP_PASSWORD: &str = env_or!("BRIDGE_AP_PASSWORD", "change-me-please");
+const _: () = assert!(!AP_SSID.is_empty() && AP_SSID.len() <= 32, "BRIDGE_AP_SSID must be 1-32 bytes");
+const _: () = assert!(AP_PASSWORD.len() >= 8 && AP_PASSWORD.len() <= 63, "BRIDGE_AP_PASSWORD must be 8-63 characters");
 pub const AP_CHANNEL: u8 = 6;
 pub const AP_MAX_CONN: u16 = 4;
 
