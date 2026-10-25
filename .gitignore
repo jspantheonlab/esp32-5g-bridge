@@ -20,3 +20,4 @@ xcuserdata/
 firmware-rs/**/target/
 firmware-rs/firmware/.embuild/
 firmware-rs/bridge-core/Cargo.lock
+pi-dongle/target/

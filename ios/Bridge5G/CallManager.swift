@@ -1,5 +1,6 @@
 import AVFoundation
 import CallKit
+import Network
 import Observation
 
 /// Presents bridge calls through CallKit (native incoming-call screen, lock screen, Recents)
@@ -27,6 +28,11 @@ final class CallManager: NSObject {
         provider = CXProvider(configuration: config)
         super.init()
         provider.setDelegate(self, queue: .main)
+    }
+
+    /// Where call audio is streamed: the Wi-Fi bridge or the USB-C dongle.
+    func setAudioHost(_ host: String) {
+        audio.host = NWEndpoint.Host(host)
     }
 
     // MARK: - Bridge -> CallKit

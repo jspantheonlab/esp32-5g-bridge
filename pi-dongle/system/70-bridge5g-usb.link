@@ -1,0 +1,7 @@
+# Gives the USB-C gadget interface a fixed name so it never swaps with the modem's own
+# USB network interface (both would otherwise be called usb0/usb1).
+[Match]
+MACAddress=02:35:47:00:00:01
+
+[Link]
+Name=iphone0

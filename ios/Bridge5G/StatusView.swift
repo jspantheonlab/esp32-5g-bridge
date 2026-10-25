@@ -25,12 +25,18 @@ struct StatusView: View {
                     }
                 }
 
-                Section("Bluetooth link") {
-                    LabeledContent("State", value: model.link.state.rawValue.capitalized)
-                    if model.link.state == .scanning {
-                        Text("Looking for your 5G Bridge… When prompted, enter the passkey printed on the device.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                if model.usingUSB {
+                    Section("Connection") {
+                        Label("USB-C dongle", systemImage: "cable.connector")
+                    }
+                } else {
+                    Section("Bluetooth link") {
+                        LabeledContent("State", value: model.link.state.rawValue.capitalized)
+                        if model.link.state == .scanning {
+                            Text("Looking for your 5G Bridge… When prompted, enter the passkey printed on the device. Using the USB-C dongle? Plug it into the iPhone.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
 
@@ -62,18 +68,31 @@ struct StatusView: View {
                     }
                 }
 
-                Section {
-                    LabeledContent("Data", value: model.status.dataUp ? "Connected" : "Down")
-                    if !model.status.ip.isEmpty {
-                        LabeledContent("WAN IP", value: model.status.ip)
+                if model.usingUSB {
+                    Section {
+                        LabeledContent("Data", value: model.status.dataUp ? "Connected" : "Down")
+                        if !model.status.ip.isEmpty {
+                            LabeledContent("WAN IP", value: model.status.ip)
+                        }
+                    } header: {
+                        Text("Data")
+                    } footer: {
+                        Text("The dongle shares its 5G connection over the USB-C cable. It appears under Settings → Ethernet.")
                     }
-                    LabeledContent("Wi-Fi", value: model.status.ssid.isEmpty ? "—" : model.status.ssid)
-                    NavigationLink("Network name & password") { WifiSettingsView() }
-                        .disabled(model.link.state != .ready)
-                } header: {
-                    Text("Hotspot")
-                } footer: {
-                    Text("Join this Wi-Fi network in Settings to use the bridge's cellular data. Call audio also travels over it.")
+                } else {
+                    Section {
+                        LabeledContent("Data", value: model.status.dataUp ? "Connected" : "Down")
+                        if !model.status.ip.isEmpty {
+                            LabeledContent("WAN IP", value: model.status.ip)
+                        }
+                        LabeledContent("Wi-Fi", value: model.status.ssid.isEmpty ? "—" : model.status.ssid)
+                        NavigationLink("Network name & password") { WifiSettingsView() }
+                            .disabled(model.link.state != .ready)
+                    } header: {
+                        Text("Hotspot")
+                    } footer: {
+                        Text("Join this Wi-Fi network in Settings to use the bridge's cellular data. Call audio also travels over it.")
+                    }
                 }
 
                 if let error = model.lastError {
@@ -81,8 +100,10 @@ struct StatusView: View {
                 }
 
                 Section {
-                    Button("Refresh") { model.link.send(["t": "status"]) }
-                    Button("Forget device", role: .destructive) { model.link.forgetDevice() }
+                    Button("Refresh") { model.send(["t": "status"]) }
+                    if !model.usingUSB {
+                        Button("Forget device", role: .destructive) { model.link.forgetDevice() }
+                    }
                 }
             }
             .navigationTitle("5G Bridge")

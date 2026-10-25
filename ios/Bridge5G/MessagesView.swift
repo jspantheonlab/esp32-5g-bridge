@@ -88,7 +88,7 @@ struct ConversationView: View {
                 } label: {
                     Image(systemName: "arrow.up.circle.fill").font(.title)
                 }
-                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.link.state != .ready)
+                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !model.isConnected)
             }
             .padding()
             .background(.bar)

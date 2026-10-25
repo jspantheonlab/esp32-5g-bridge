@@ -13,7 +13,7 @@ struct WifiSettingsView: View {
     private var draft: WifiCredentials { WifiCredentials(ssid: ssid, pass: pass) }
     private var problem: String? { WifiCredentials.problem(ssid: ssid, pass: pass) }
     private var canSave: Bool {
-        model.link.state == .ready && problem == nil && draft != model.wifi && model.wifiSaveState != .saving
+        model.isConnected && problem == nil && draft != model.wifi && model.wifiSaveState != .saving
     }
 
     var body: some View {
