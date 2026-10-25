@@ -55,6 +55,27 @@ jobs:
       - run: cargo build --release
       - run: cargo clippy --release -- -D warnings
 
+  pi-dongle:
+    name: Pi dongle daemon
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pi-dongle
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+          targets: aarch64-unknown-linux-gnu
+      - run: cargo fmt --check
+      - run: cargo test
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: shellcheck -S warning system/*.sh
+      - uses: cargo-bins/cargo-binstall@v1.26.1
+      - run: pip install ziglang && cargo binstall cargo-zigbuild --no-confirm
+      - name: Cross-compile for Raspberry Pi OS (aarch64, glibc 2.36)
+        run: cargo zigbuild --release --target aarch64-unknown-linux-gnu.2.36
+
   ios:
     name: iOS app (simulator build)
     runs-on: macos-latest

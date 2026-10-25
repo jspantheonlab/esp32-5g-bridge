@@ -1,0 +1,13 @@
+[Unit]
+Description=5G Bridge: calls and SMS for the iPhone app
+After=network.target bridge5g-gadget.service
+Wants=bridge5g-gadget.service
+
+[Service]
+EnvironmentFile=-/etc/default/bridge5g
+ExecStart=/usr/local/bin/bridge5g-dongle
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

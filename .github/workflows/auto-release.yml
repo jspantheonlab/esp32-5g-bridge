@@ -1,6 +1,6 @@
 name: Auto release
 
-# After a PR that changes firmware or the app is merged to main: tag the next version and
+# After a PR that changes firmware, the Pi dongle or the app is merged to main: tag the next version and
 # publish a release. Bump type comes from the merged PR's labels:
 #   release:major → vX+1.0.0   release:minor → vX.Y+1.0   (none) → patch   release:skip → no release
 # Docs- or CI-only merges don't match the path filter and never release.
@@ -11,6 +11,7 @@ on:
       - "firmware/**"
       - "firmware-rs/**"
       - "ios/**"
+      - "pi-dongle/**"
 
 permissions:
   contents: write

@@ -75,6 +75,32 @@ jobs:
           name: firmware-rust
           path: esp32-5g-bridge-rust-*.bin
 
+  pi-dongle:
+    name: Pi dongle (aarch64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+      - uses: cargo-bins/cargo-binstall@v1.26.1
+      - run: pip install ziglang && cargo binstall cargo-zigbuild --no-confirm
+      - name: Build
+        working-directory: pi-dongle
+        run: cargo zigbuild --release --target aarch64-unknown-linux-gnu.2.36
+      - name: Package binary + installer
+        run: |
+          dir="bridge5g-dongle-aarch64-${TAG}"
+          mkdir "$dir"
+          cp pi-dongle/target/aarch64-unknown-linux-gnu/release/bridge5g-dongle pi-dongle/system/* "$dir/"
+          tar czf "$dir.tar.gz" "$dir"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pi-dongle
+          path: bridge5g-dongle-aarch64-*.tar.gz
+
   ios:
     name: iOS app (unsigned IPA)
     runs-on: macos-latest
@@ -99,7 +125,7 @@ jobs:
 
   publish:
     name: Publish release
-    needs: [firmware-c, firmware-rust, ios]
+    needs: [firmware-c, firmware-rust, pi-dongle, ios]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

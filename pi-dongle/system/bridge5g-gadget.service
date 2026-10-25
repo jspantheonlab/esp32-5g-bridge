@@ -1,0 +1,14 @@
+[Unit]
+Description=5G Bridge: USB-C Ethernet gadget for the iPhone
+After=sys-kernel-config.mount systemd-modules-load.service
+Before=NetworkManager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/bridge5g
+ExecStart=/usr/local/lib/bridge5g/usb-gadget.sh start
+ExecStop=/usr/local/lib/bridge5g/usb-gadget.sh stop
+
+[Install]
+WantedBy=multi-user.target

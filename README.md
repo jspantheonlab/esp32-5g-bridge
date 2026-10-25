@@ -39,6 +39,7 @@ firmware/            ESP-IDF project (ESP32-S3, C)
 firmware-rs/         Same firmware in Rust (std on ESP-IDF); pick either this or firmware/
   bridge-core/         Host-tested logic: AT parsing, SMS/UCS2, calls, protocol, audio framing
   firmware/            ESP32-S3 binary: esp-idf-svc, esp32-nimble, esp_modem via a small C shim
+pi-dongle/           Raspberry Pi USB-C dongle prototype: Linux daemon (Rust) + system setup
 ios/                 SwiftUI companion app (iOS 17+)
   Bridge5G/BridgeLink.swift   CoreBluetooth central with background restore
   Bridge5G/CallManager.swift  CallKit provider
@@ -46,6 +47,7 @@ ios/                 SwiftUI companion app (iOS 17+)
   Bridge5G/MessageStore.swift Local SMS history
 docs/
   china-sim.md         Testing with China Mobile / Unicom / Telecom SIMs (module choice, APN, VoLTE)
+  pi-dongle.md         Raspberry Pi USB-C dongle: iPhone gets 5G over the cable, plus calls/SMS
   hardware.md          Prototype BOM, wiring, bring-up checklist
   board-design.md      Battery-powered custom PCB: power tree, battery, GPIO map, layout, enclosure, cost
   protocol.md          BLE JSON protocol + UDP audio format
@@ -97,7 +99,7 @@ First run:
 
 Download ready-to-flash firmware images and the iOS app from [Releases](https://github.com/jspantheonlab/esp32-5g-bridge/releases). The release notes explain flashing and sideloading.
 
-Releases are automatic. When a pull request that changes `firmware/`, `firmware-rs/` or `ios/` is merged to `main`, the next version is tagged and built:
+Releases are automatic. When a pull request that changes `firmware/`, `firmware-rs/`, `pi-dongle/` or `ios/` is merged to `main`, the next version is tagged and built:
 
 | Label on the PR | Version bump |
 |---|---|

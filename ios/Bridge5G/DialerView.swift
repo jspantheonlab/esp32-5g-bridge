@@ -55,7 +55,7 @@ struct DialerView: View {
             }
             Spacer()
         }
-        .disabled(model.link.state != .ready)
+        .disabled(!model.isConnected)
     }
 
     @ViewBuilder private var callButton: some View {

@@ -5,8 +5,10 @@ import Network
 /// Wire format (matches firmware/main/audio_bridge.h):
 ///   8-byte header {'5','G', seq u16 LE, ts u32 LE} + 20 ms of mono int16 LE PCM.
 final class VoiceAudio {
-    static let bridgeHost: NWEndpoint.Host = "192.168.4.1"
     static let bridgePort: NWEndpoint.Port = 5004
+
+    /// 192.168.4.1 for the Wi-Fi bridge (ESP32), 192.168.7.1 for the USB-C dongle.
+    var host: NWEndpoint.Host = "192.168.4.1"
 
     private let sampleRate: Double
     private let frameSamples: Int
@@ -38,7 +40,7 @@ final class VoiceAudio {
         guard !running else { return }
         running = true
 
-        let conn = NWConnection(host: Self.bridgeHost, port: Self.bridgePort, using: .udp)
+        let conn = NWConnection(host: host, port: Self.bridgePort, using: .udp)
         conn.start(queue: queue)
         connection = conn
         receive(on: conn)

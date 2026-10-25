@@ -3,10 +3,11 @@ import Observation
 import UIKit
 import UserNotifications
 
-/// Wires the BLE link, CallKit and the message store together.
+/// Wires the bridge links (USB-C dongle or BLE), CallKit and the message store together.
 @Observable
 final class AppModel {
     let link = BridgeLink()
+    let usb = UsbLink()
     let calls = CallManager()
     let store = MessageStore()
     private(set) var status = ModemStatus()
@@ -18,26 +19,46 @@ final class AppModel {
     private(set) var wifiSaveState: WifiSaveState = .idle
 
     init() {
-        calls.send = { [weak self] in self?.link.send($0) }
+        calls.send = { [weak self] in self?.send($0) }
         link.onMessage = { [weak self] in self?.handle($0) }
-        link.onReady = { [weak self] in self?.link.send(["t": "status"]) }
+        link.onReady = { [weak self] in self?.send(["t": "status"]) }
+        usb.onMessage = { [weak self] in self?.handle($0) }
+        usb.onReadyChange = { [weak self] ready in
+            guard let self else { return }
+            calls.setAudioHost(ready ? "192.168.7.1" : "192.168.4.1")
+            if ready { send(["t": "status"]) }
+        }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+    }
+
+    /// True when a bridge is reachable over USB-C or Bluetooth.
+    var isConnected: Bool { usb.isReady || link.state == .ready }
+
+    /// The USB-C dongle is plugged in and preferred over Bluetooth.
+    var usingUSB: Bool { usb.isReady }
+
+    func send(_ message: [String: Any]) {
+        if usb.isReady {
+            usb.send(message)
+        } else {
+            link.send(message)
+        }
     }
 
     func sendSMS(to peer: String, body: String) {
         let msg = SMSMessage(peer: peer, body: body, date: .now, outgoing: true, status: .sending)
         store.add(msg)
-        link.send(["t": "sms_send", "ref": msg.id.uuidString, "to": peer, "body": body])
+        send(["t": "sms_send", "ref": msg.id.uuidString, "to": peer, "body": body])
     }
 
     func requestWifi() {
         if wifiSaveState != .saving { wifiSaveState = .idle }
-        link.send(["t": "wifi_get"])
+        send(["t": "wifi_get"])
     }
 
     func saveWifi(_ credentials: WifiCredentials) {
         wifiSaveState = .saving
-        link.send(["t": "wifi_set", "ssid": credentials.ssid, "pass": credentials.pass])
+        send(["t": "wifi_set", "ssid": credentials.ssid, "pass": credentials.pass])
     }
 
     private func handle(_ msg: [String: Any]) {
@@ -88,7 +109,7 @@ final class AppModel {
             store.add(SMSMessage(peer: from, body: body, date: date, outgoing: false, status: .received))
             notify(from: from, body: body)
         }
-        link.send(["t": "sms_ack", "id": simIndex])
+        send(["t": "sms_ack", "id": simIndex])
     }
 
     /// Notifies once when the bridge battery drops to 15% or below while not charging.

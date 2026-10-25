@@ -6,6 +6,7 @@
 |---|---|
 | `esp32-5g-bridge-c-*.bin` | C firmware for ESP32-S3 (8 MB flash), single merged image |
 | `esp32-5g-bridge-rust-*.bin` | Rust firmware, same features. Flash **one** of the two. |
+| `bridge5g-dongle-aarch64-*.tar.gz` | Raspberry Pi USB-C dongle prototype: daemon + installer (`sudo ./setup.sh`), see [docs/pi-dongle.md](https://github.com/jspantheonlab/esp32-5g-bridge/blob/main/docs/pi-dongle.md) |
 | `Bridge5G-unsigned-*.ipa` | iPhone app (iOS 17+), **unsigned**: you sign it with your own Apple ID |
 | `SHA256SUMS.txt` | Checksums |
 
