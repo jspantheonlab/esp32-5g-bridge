@@ -349,6 +349,41 @@ static bool wait_registered(int timeout_s)
     return false;
 }
 
+/* Carrier APNs by IMSI prefix (MCC+MNC). Same table as firmware-rs/bridge-core/src/carrier.rs. */
+static const struct {
+    const char *prefix;
+    const char *name;
+    const char *apn;
+} s_carriers[] = {
+    { "46000", "China Mobile", "cmnet" },  { "46002", "China Mobile", "cmnet" },
+    { "46004", "China Mobile", "cmnet" },  { "46007", "China Mobile", "cmnet" },
+    { "46008", "China Mobile", "cmnet" },  { "46001", "China Unicom", "3gnet" },
+    { "46006", "China Unicom", "3gnet" },  { "46009", "China Unicom", "3gnet" },
+    { "46003", "China Telecom", "ctnet" }, { "46005", "China Telecom", "ctnet" },
+    { "46011", "China Telecom", "ctnet" }, { "46015", "China Broadnet", "cbnet" },
+};
+
+/* The Kconfig APN wins if it was changed from the default; otherwise use the SIM's carrier APN. */
+static void select_apn(void)
+{
+    static char apn[64];
+    strlcpy(apn, CONFIG_BRIDGE_MODEM_APN, sizeof(apn));
+
+    char out[64];
+    if (strcmp(CONFIG_BRIDGE_MODEM_APN, "internet") == 0 && modem_at("AT+CIMI", out, sizeof(out), 2000) == ESP_OK) {
+        const char *imsi = out + strspn(out, "\r\n ");
+        for (size_t i = 0; i < sizeof(s_carriers) / sizeof(s_carriers[0]); i++) {
+            if (strncmp(imsi, s_carriers[i].prefix, strlen(s_carriers[i].prefix)) == 0) {
+                strlcpy(apn, s_carriers[i].apn, sizeof(apn));
+                ESP_LOGI(TAG, "SIM carrier: %s", s_carriers[i].name);
+                break;
+            }
+        }
+    }
+    ESP_LOGI(TAG, "Using APN \"%s\"", apn);
+    esp_modem_set_apn(s_dce, apn);
+}
+
 static esp_err_t bring_up(void)
 {
     if (!power_and_sync()) {
@@ -365,6 +400,9 @@ static esp_err_t bring_up(void)
         return ESP_ERR_INVALID_STATE;
     }
 
+    select_apn();
+    /* Let the modem pick the carrier profile (MBN) that matches the SIM, e.g. for VoLTE. */
+    modem_at("AT+QMBNCFG=\"AutoSel\",1", NULL, 0, 2000);
 #ifdef CONFIG_BRIDGE_ENABLE_IMS
     modem_at("AT+QCFG=\"ims\",1", NULL, 0, 2000);
 #endif

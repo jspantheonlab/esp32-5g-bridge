@@ -94,6 +94,15 @@ esp_err_t modem_shim_at_raw(const char *data, const char *pass, const char *fail
     return esp_modem_at_raw(s_dce, data, out, pass, fail, timeout_ms);
 }
 
+esp_err_t modem_shim_set_apn(const char *apn)
+{
+    if (!s_dce || !apn) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    strlcpy(s_apn, apn, sizeof(s_apn));
+    return esp_modem_set_apn(s_dce, s_apn);
+}
+
 esp_err_t modem_shim_sync(void)
 {
     return s_dce ? esp_modem_sync(s_dce) : ESP_ERR_INVALID_STATE;
