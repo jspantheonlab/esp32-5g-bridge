@@ -1,0 +1,102 @@
+name: Release
+
+# Push a tag like v0.1.0 to build both firmwares and the iOS app and publish a GitHub release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  firmware-c:
+    name: C firmware image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.5
+          target: esp32s3
+          path: firmware
+          command: idf.py build && idf.py merge-bin
+      - run: cp firmware/build/merged-binary.bin "esp32-5g-bridge-c-${GITHUB_REF_NAME}.bin"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: firmware-c
+          path: esp32-5g-bridge-c-*.bin
+
+  firmware-rust:
+    name: Rust firmware image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: esp-rs/xtensa-toolchain@v1.7
+        with:
+          buildtargets: esp32s3
+          ldproxy: true
+      - uses: cargo-bins/cargo-binstall@v1.26.1
+      - run: cargo binstall espflash --no-confirm
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            firmware-rs/firmware/.embuild
+            firmware-rs/firmware/target
+          key: rust-fw-${{ hashFiles('firmware-rs/firmware/Cargo.lock', 'firmware-rs/firmware/sdkconfig.defaults') }}
+          restore-keys: rust-fw-
+      - name: Build
+        working-directory: firmware-rs/firmware
+        run: cargo build --release
+      - name: Merge bootloader, partition table and app into one image
+        working-directory: firmware-rs/firmware
+        run: >
+          espflash save-image --chip esp32s3 --merge --skip-padding --flash-size 8mb
+          --partition-table partitions.csv
+          target/xtensa-esp32s3-espidf/release/bridge5g
+          "$GITHUB_WORKSPACE/esp32-5g-bridge-rust-${GITHUB_REF_NAME}.bin"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: firmware-rust
+          path: esp32-5g-bridge-rust-*.bin
+
+  ios:
+    name: iOS app (unsigned IPA)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: brew install xcodegen
+      - name: Build unsigned IPA
+        working-directory: ios
+        run: |
+          xcodegen generate
+          xcodebuild -project Bridge5G.xcodeproj -target Bridge5G -sdk iphoneos -configuration Release \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+          mkdir Payload
+          cp -R build/Release-iphoneos/Bridge5G.app Payload/
+          zip -qry "$GITHUB_WORKSPACE/Bridge5G-unsigned-${GITHUB_REF_NAME}.ipa" Payload
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios
+          path: Bridge5G-unsigned-*.ipa
+
+  publish:
+    name: Publish release
+    needs: [firmware-c, firmware-rust, ios]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - run: cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" dist/*
+          --prerelease
+          --title "$GITHUB_REF_NAME (pre-release, not yet tested on hardware)"
+          --notes-file .github/release-notes.md
