@@ -41,6 +41,9 @@ menu "5G Bridge"
         config BRIDGE_MODEM_APN
             string "APN"
             default "internet"
+            help
+                Leave as "internet" to pick the APN automatically from the SIM's carrier
+                (China Mobile/Unicom/Telecom/Broadnet); any other value is always used.
 
         config BRIDGE_SIM_PIN
             string "SIM PIN (empty if the SIM has no PIN)"

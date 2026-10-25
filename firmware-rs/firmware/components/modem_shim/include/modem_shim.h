@@ -3,6 +3,8 @@
 /*
  * Thin C layer over esp_modem so the Rust firmware never has to replicate its C/C++
  * config macros or struct layouts. All state lives here; there is one modem.
+ *
+ * After changing this header, `touch src/bindings.h` so esp-idf-sys regenerates the Rust bindings.
  */
 
 #include <stdbool.h>
@@ -36,6 +38,9 @@ size_t modem_shim_resp_max(void);
 /* Sends raw bytes (caller adds \r / Ctrl-Z), waits for pass/fail phrase. */
 esp_err_t modem_shim_at_raw(const char *data, const char *pass, const char *fail,
                             int timeout_ms, char *out, size_t out_len);
+
+/* Replaces the APN used when data mode starts (call before modem_shim_enter_cmux). */
+esp_err_t modem_shim_set_apn(const char *apn);
 
 /* Plain "AT" handshake. */
 esp_err_t modem_shim_sync(void);

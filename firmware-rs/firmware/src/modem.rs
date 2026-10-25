@@ -8,9 +8,9 @@ use std::thread;
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context};
-use bridge_core::at;
 use bridge_core::framing::UrcReader;
 use bridge_core::protocol::{Event, Status};
+use bridge_core::{at, carrier};
 use esp_idf_svc::hal::gpio::{Output, PinDriver};
 use esp_idf_svc::sys::{self, esp, modem_shim as shim, EspError};
 use log::{info, warn};
@@ -213,6 +213,25 @@ impl Supervisor {
         bail!("SIM not ready")
     }
 
+    /// Uses the build-time APN if one was set, otherwise the APN of the carrier detected from the IMSI.
+    fn select_apn(&self) {
+        let resp = self.modem.at("AT+CIMI", 2000).ok();
+        let imsi = resp.as_deref().and_then(carrier::parse_cimi);
+        let apn = carrier::choose_apn(config::APN, imsi);
+        match imsi.and_then(carrier::carrier_for_imsi) {
+            Some(c) => info!("SIM carrier: {} (APN \"{apn}\")", c.name),
+            None => info!("Using APN \"{apn}\""),
+        }
+        match CString::new(apn) {
+            Ok(apn) => {
+                if let Err(e) = esp!(unsafe { shim::modem_shim_set_apn(apn.as_ptr()) }) {
+                    warn!("Setting APN failed: {e}");
+                }
+            }
+            Err(_) => warn!("APN contains a NUL byte; keeping the default"),
+        }
+    }
+
     fn wait_registered(&self, timeout: Duration) -> anyhow::Result<()> {
         const QUERIES: [(&str, &str); 2] = [("AT+C5GREG?", "+C5GREG:"), ("AT+CEREG?", "+CEREG:")];
         let attempts = timeout.as_secs() / 2;
@@ -237,6 +256,9 @@ impl Supervisor {
         }
         self.wait_sim_ready()?;
 
+        self.select_apn();
+        // Let the modem pick the carrier profile (MBN) that matches the SIM, e.g. for VoLTE.
+        let _ = self.modem.at("AT+QMBNCFG=\"AutoSel\",1", 2000);
         if config::ENABLE_IMS {
             let _ = self.modem.at("AT+QCFG=\"ims\",1", 2000);
         }

@@ -45,6 +45,7 @@ ios/                 SwiftUI companion app (iOS 17+)
   Bridge5G/VoiceAudio.swift   AVAudioEngine ⇄ UDP audio
   Bridge5G/MessageStore.swift Local SMS history
 docs/
+  china-sim.md         Testing with China Mobile / Unicom / Telecom SIMs (module choice, APN, VoLTE)
   hardware.md          Prototype BOM, wiring, bring-up checklist
   board-design.md      Battery-powered custom PCB: power tree, battery, GPIO map, layout, enclosure, cost
   protocol.md          BLE JSON protocol + UDP audio format
