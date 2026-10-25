@@ -110,6 +110,17 @@ fn ppp_ip() -> Option<String> {
     up.then(|| CStr::from_bytes_until_nul(&buf).map(|s| s.to_string_lossy().into_owned()).unwrap_or_default())
 }
 
+/// Re-enables NAPT routing after the hotspot restarted, if the data session is up.
+pub fn reapply_uplink(router: &ApRouter) {
+    if ppp_ip().is_some() {
+        // Same C type, generated in a separate bindings module.
+        let ppp = unsafe { shim::modem_shim_ppp_netif() }.cast();
+        if let Err(e) = router.set_uplink(ppp) {
+            warn!("Hotspot routing failed: {e}");
+        }
+    }
+}
+
 pub struct Supervisor {
     pub modem: Arc<Modem>,
     pub pwrkey: PinDriver<'static, Output>,

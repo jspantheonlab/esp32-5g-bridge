@@ -48,7 +48,7 @@ cargo run --release
 
 The first build downloads ESP-IDF v5.5.5 and its tools into `firmware/.embuild/` (~5 GB) and takes a while. Later builds are incremental.
 
-Build-time settings (environment variables): `BRIDGE_APN`, `BRIDGE_SIM_PIN`, `BRIDGE_AP_SSID`, `BRIDGE_AP_PASSWORD`, `BRIDGE_BLE_NAME`, `BRIDGE_BLE_PASSKEY`. Pins and PCM settings are in `src/config.rs` and `src/main.rs`. sdkconfig options are in `firmware/sdkconfig.defaults`.
+Build-time settings (environment variables): `BRIDGE_APN`, `BRIDGE_SIM_PIN`, `BRIDGE_AP_SSID`, `BRIDGE_AP_PASSWORD`, `BRIDGE_BLE_NAME`, `BRIDGE_BLE_PASSKEY`. The hotspot name and password are only defaults: once changed from the app, the saved values (NVS) take over. Pins and PCM settings are in `src/config.rs` and `src/main.rs`. sdkconfig options are in `firmware/sdkconfig.defaults`.
 
 ## Tests
 

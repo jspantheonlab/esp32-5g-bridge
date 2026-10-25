@@ -60,7 +60,9 @@ static void emit_status(const modem_status_t *st)
         cJSON_AddNumberToObject(msg, "rssi", st->rssi_dbm);
     }
     cJSON_AddStringToObject(msg, "ip", st->ip);
-    cJSON_AddStringToObject(msg, "ssid", CONFIG_BRIDGE_AP_SSID);
+    char ssid[33];
+    hotspot_get_credentials(ssid, sizeof(ssid), NULL, 0);
+    cJSON_AddStringToObject(msg, "ssid", ssid);
     power_status_t power;
     power_get_status(&power);
     if (power.present) {
@@ -87,6 +89,17 @@ static void emit_current_status(void)
     modem_status_t st;
     modem_get_status(&st);
     emit_status(&st);
+}
+
+static void emit_wifi(void)
+{
+    char ssid[33], pass[64];
+    hotspot_get_credentials(ssid, sizeof(ssid), pass, sizeof(pass));
+    cJSON *msg = cJSON_CreateObject();
+    cJSON_AddStringToObject(msg, "t", "wifi");
+    cJSON_AddStringToObject(msg, "ssid", ssid);
+    cJSON_AddStringToObject(msg, "pass", pass);
+    app_emit(msg);
 }
 
 static const char *str_field(const cJSON *msg, const char *key)
@@ -123,6 +136,20 @@ static void handle_command(const char *line)
         }
     } else if (strcmp(type, "sms_sync") == 0) {
         sms_request_sync();
+    } else if (strcmp(type, "wifi_get") == 0) {
+        emit_wifi();
+    } else if (strcmp(type, "wifi_set") == 0) {
+        const char *problem = hotspot_set_credentials(str_field(msg, "ssid"), str_field(msg, "pass"));
+        if (problem) {
+            cJSON *reply = cJSON_CreateObject();
+            cJSON_AddStringToObject(reply, "t", "err");
+            cJSON_AddStringToObject(reply, "ctx", "wifi_set");
+            cJSON_AddStringToObject(reply, "msg", problem);
+            app_emit(reply);
+        } else {
+            emit_wifi();
+            emit_current_status();
+        }
     } else if (strcmp(type, "status") == 0) {
         modem_status_t st;
         modem_get_status(&st);
