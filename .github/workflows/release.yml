@@ -1,12 +1,22 @@
 name: Release
 
-# Push a tag like v0.1.0 to build both firmwares and the iOS app and publish a GitHub release.
+# Builds both firmwares and the iOS app and publishes a GitHub release.
+# Runs automatically from auto-release.yml after a merge to main, or when a v* tag is pushed by hand.
 on:
   push:
     tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: Existing tag to release, e.g. v0.2.0
+        required: true
+        type: string
 
 permissions:
   contents: write
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   firmware-c:
@@ -14,13 +24,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
       - uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: v5.5.5
           target: esp32s3
           path: firmware
           command: idf.py build && idf.py merge-bin
-      - run: cp firmware/build/merged-binary.bin "esp32-5g-bridge-c-${GITHUB_REF_NAME}.bin"
+      - run: cp firmware/build/merged-binary.bin "esp32-5g-bridge-c-${TAG}.bin"
       - uses: actions/upload-artifact@v7
         with:
           name: firmware-c
@@ -31,6 +43,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
       - uses: esp-rs/xtensa-toolchain@v1.7
         with:
           buildtargets: esp32s3
@@ -55,7 +69,7 @@ jobs:
           espflash save-image --chip esp32s3 --merge --skip-padding --flash-size 8mb
           --partition-table partitions.csv
           target/xtensa-esp32s3-espidf/release/bridge5g
-          "$GITHUB_WORKSPACE/esp32-5g-bridge-rust-${GITHUB_REF_NAME}.bin"
+          "$GITHUB_WORKSPACE/esp32-5g-bridge-rust-${TAG}.bin"
       - uses: actions/upload-artifact@v7
         with:
           name: firmware-rust
@@ -66,6 +80,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
       - run: brew install xcodegen
       - name: Build unsigned IPA
         working-directory: ios
@@ -75,7 +91,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
           mkdir Payload
           cp -R build/Release-iphoneos/Bridge5G.app Payload/
-          zip -qry "$GITHUB_WORKSPACE/Bridge5G-unsigned-${GITHUB_REF_NAME}.ipa" Payload
+          zip -qry "$GITHUB_WORKSPACE/Bridge5G-unsigned-${TAG}.ipa" Payload
       - uses: actions/upload-artifact@v7
         with:
           name: ios
@@ -87,6 +103,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
       - uses: actions/download-artifact@v8
         with:
           path: dist
@@ -96,7 +114,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
-          gh release create "$GITHUB_REF_NAME" dist/*
+          gh release create "$TAG" dist/*
           --prerelease
-          --title "$GITHUB_REF_NAME (pre-release, not yet tested on hardware)"
+          --title "$TAG (pre-release, not yet tested on hardware)"
           --notes-file .github/release-notes.md

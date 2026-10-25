@@ -92,6 +92,21 @@ First run:
 2. In iOS Settings → Wi-Fi, join `5G-Bridge`.
 3. The **Bridge** tab shows SIM, operator, 5G/LTE and signal. The **Keypad** places calls, and **Messages** handles SMS.
 
+## Releases
+
+Download ready-to-flash firmware images and the iOS app from [Releases](https://github.com/jspantheonlab/esp32-5g-bridge/releases). The release notes explain flashing and sideloading.
+
+Releases are automatic. When a pull request that changes `firmware/`, `firmware-rs/` or `ios/` is merged to `main`, the next version is tagged and built:
+
+| Label on the PR | Version bump |
+|---|---|
+| *(none)* | patch: `v0.1.0` → `v0.1.1` |
+| `release:minor` | minor: `v0.1.1` → `v0.2.0` |
+| `release:major` | major: `v0.2.0` → `v1.0.0` |
+| `release:skip` | no release |
+
+Docs- or CI-only merges never release. Pushing a `v*` tag by hand also triggers a release.
+
 ## Status
 
 This is a **starting scaffold that hasn't run on hardware yet**.
