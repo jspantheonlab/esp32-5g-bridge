@@ -16,6 +16,9 @@ final class BridgeLink: NSObject {
     private static let knownPeripheralKey = "bridge5g.peripheral"
 
     private(set) var state: State = .poweredOff
+    /// The bridge no longer knows this iPhone (e.g. after a factory reset). iOS keeps its old
+    /// pairing keys until the user forgets the device in Settings → Bluetooth.
+    private(set) var pairingLost = false
 
     @ObservationIgnored var onMessage: (([String: Any]) -> Void)?
     @ObservationIgnored var onReady: (() -> Void)?
@@ -115,13 +118,21 @@ extension BridgeLink: CBCentralManagerDelegate {
     }
 
     func centralManager(_ central: CBCentralManager, didFailToConnect p: CBPeripheral, error: Error?) {
+        notePairingError(error)
         connectOrScan()
     }
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral p: CBPeripheral, error: Error?) {
         rx = nil
         inbound.removeAll()
+        notePairingError(error)
         connectOrScan()
+    }
+
+    private func notePairingError(_ error: Error?) {
+        if (error as? CBError)?.code == .peerRemovedPairingInformation {
+            pairingLost = true
+        }
     }
 }
 
@@ -142,6 +153,7 @@ extension BridgeLink: CBPeripheralDelegate {
     func peripheral(_ p: CBPeripheral, didUpdateNotificationStateFor c: CBCharacteristic, error: Error?) {
         if c.uuid == Self.txUUID, c.isNotifying, error == nil {
             state = .ready
+            pairingLost = false
             onReady?()
         }
     }

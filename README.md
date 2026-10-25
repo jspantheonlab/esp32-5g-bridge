@@ -62,6 +62,8 @@ idf.py menuconfig      # 5G Bridge → APN, hotspot SSID/password, BLE passkey, 
 idf.py build flash monitor
 ```
 
+**Factory reset:** hold the board's **BOOT** button for 10 seconds. The app warns at 5 s, and releasing cancels. The reset clears the hotspot name and password set from the app and all Bluetooth pairings, then restarts. Afterwards, forget "5G-Bridge" in iPhone Settings → Bluetooth and pair again.
+
 **Change the BLE passkey before you deploy, and change the hotspot password** in the app (Bridge → Hotspot → Network name & password) or at build time. The defaults are public.
 
 ### Rust alternative

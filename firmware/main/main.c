@@ -14,6 +14,7 @@
 #include "hotspot.h"
 #include "modem.h"
 #include "power.h"
+#include "reset_button.h"
 #include "sms.h"
 #include "voice.h"
 
@@ -224,6 +225,7 @@ void app_main(void)
     sms_init();
     voice_init();
     power_init(emit_current_status);
+    reset_button_init();
 
     ESP_LOGI(TAG, "5G bridge started");
 }

@@ -26,6 +26,8 @@
 {"t":"sms_sent","ref":"<client ref>","ok":false,"err":"message longer than 160 characters"}
 {"t":"wifi","ssid":"5G-Bridge","pass":"correct horse"}
 //   reply to wifi_get, and to wifi_set once the new settings are live
+{"t":"notice","msg":"Factory reset in 5 s. Release the bridge's button to cancel."}
+//   informational message for the user (factory-reset countdown, cancel, restart)
 {"t":"err","ctx":"dial","msg":"ESP_FAIL"}
 {"t":"err","ctx":"wifi_set","msg":"password must be 8 to 63 characters"}
 ```
@@ -45,7 +47,7 @@
 {"t":"wifi_set","ssid":"My Bridge","pass":"correct horse"}
 ```
 
-`wifi_set` rules: SSID 1–32 bytes, password 8–63 printable ASCII characters (WPA2). The bridge validates, restarts the hotspot with the new settings, re-enables 5G routing, and saves them to NVS. Saved settings override the build-time defaults until the flash is erased. Every Wi-Fi client, including the phone, drops off and has to rejoin with the new password. The BLE link isn't affected, so the reply still arrives. The password only travels over the encrypted, passkey-bonded BLE link.
+`wifi_set` rules: SSID 1–32 bytes, password 8–63 printable ASCII characters (WPA2). The bridge validates, restarts the hotspot with the new settings, re-enables 5G routing, and saves them to NVS. Saved settings override the build-time defaults until a factory reset (hold the BOOT button for 10 s) or a flash erase. Every Wi-Fi client, including the phone, drops off and has to rejoin with the new password. The BLE link isn't affected, so the reply still arrives. The password only travels over the encrypted, passkey-bonded BLE link.
 
 SMS limits (current firmware): a single segment only. That means 160 GSM-7 characters, or 70 UTF-16 units for anything else (emoji count as 2). Concatenated SMS needs PDU mode and is on the roadmap.
 

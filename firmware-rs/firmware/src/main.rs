@@ -9,6 +9,7 @@ mod config;
 mod hotspot;
 mod modem;
 mod power;
+mod reset;
 mod sms;
 mod voice;
 
@@ -19,7 +20,7 @@ use std::thread;
 use bridge_core::protocol::{self, Command, Event, Status};
 use bridge_core::{at, call};
 use esp_idf_svc::eventloop::EspSystemEventLoop;
-use esp_idf_svc::hal::gpio::PinDriver;
+use esp_idf_svc::hal::gpio::{PinDriver, Pull};
 use esp_idf_svc::hal::i2c::{I2cConfig, I2cDriver};
 use esp_idf_svc::hal::peripherals::Peripherals;
 use esp_idf_svc::hal::units::FromValueType;
@@ -97,6 +98,9 @@ fn main() -> anyhow::Result<()> {
     // Fuel gauge + charger on I2C SDA=GPIO8, SCL=GPIO9 (custom board; absent on a DevKit).
     let i2c = I2cDriver::new(peripherals.i2c0, pins.gpio8, pins.gpio9, &I2cConfig::new().baudrate(100.kHz().into()))?;
     power::spawn(power::PowerMonitor { i2c, status: status.clone(), modem, emit: emit.clone() })?;
+
+    // Factory reset: hold the BOOT button (GPIO0) for 10 s.
+    reset::spawn(PinDriver::input(pins.gpio0, Pull::Up)?, emit.clone())?;
 
     info!("5G bridge started");
     App { hotspot, status, voice: voice_tx, sms: sms_tx, emit }.run(link_rx);

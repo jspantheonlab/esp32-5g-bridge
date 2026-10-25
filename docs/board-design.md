@@ -68,7 +68,7 @@ This keeps the current firmware defaults (UART, PCM, PWRKEY) unchanged.
 | 8 / 9 | I²C SDA / SCL | BQ25895, MAX17048, OLED (4.7 kΩ pull-ups to 3V3) |
 | 10 | CHARGER_INT (in) | open-drain |
 | 11 | GAUGE_ALRT (in) | open-drain |
-| 12 | BTN_USER (in) | long press = BLE pairing mode / factory reset |
+| 12 | BTN_USER (in) | reserved for a future BLE pairing-mode button (factory reset uses BOOT/GPIO0) |
 | 13 | MODEM_VBAT_EN (out) | TPS22965 ON |
 | 14 | USB_MUX_SEL (out) | 0 = ESP32, 1 = modem. Add a test pad/jumper to force the ESP32 for recovery. |
 | 15 / 16 / 17 / 18 | UART RTS / CTS / TX / RX | via TXB0108 |
@@ -79,7 +79,8 @@ This keeps the current firmware defaults (UART, PCM, PWRKEY) unchanged.
 | 40 | MODEM_DTR (out) | lets the module sleep between events |
 | 41 | MODEM_W_DISABLE (out) | airplane mode |
 | 47 | LED (WS2812 data) | |
-| 0, 3, 45, 46 | strapping, leave free | GPIO0 goes to a BOOT button/test pad |
+| 0 | BOOT button | Strapping pin (hold at power-on = download mode). At runtime, **hold 10 s = factory reset**. |
+| 3, 45, 46 | strapping, leave free | |
 
 ## PCB guidelines
 

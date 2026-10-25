@@ -93,6 +93,15 @@ menu "5G Bridge"
             int "I2C SCL (fuel gauge + charger)"
             default 9
 
+        config BRIDGE_RESET_BUTTON_GPIO
+            int "Factory-reset button GPIO (active low; GPIO0 = BOOT button)"
+            default 0
+
+        config BRIDGE_RESET_HOLD_SECONDS
+            int "Hold time for factory reset (seconds)"
+            range 6 30
+            default 10
+
         config BRIDGE_POWER_BUTTON_GPIO
             int "Power button GPIO (RTC-capable, wakes from low-battery shutdown)"
             default 2

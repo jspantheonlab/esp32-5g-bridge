@@ -5,6 +5,7 @@
 
 pub mod at;
 pub mod audio;
+pub mod button;
 pub mod call;
 pub mod framing;
 pub mod power;
