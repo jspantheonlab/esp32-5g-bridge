@@ -97,6 +97,10 @@ pub enum Event {
         ssid: String,
         pass: String,
     },
+    /// Informational message for the user (e.g. factory-reset countdown).
+    Notice {
+        msg: String,
+    },
     Err {
         ctx: String,
         msg: String,
@@ -175,6 +179,9 @@ mod tests {
 
         let wifi = Event::Wifi { ssid: "Bridge".into(), pass: "s3cret-pass".into() };
         assert_eq!(wifi.to_line(), "{\"t\":\"wifi\",\"ssid\":\"Bridge\",\"pass\":\"s3cret-pass\"}\n");
+
+        let notice = Event::Notice { msg: "hi".into() };
+        assert_eq!(notice.to_line(), "{\"t\":\"notice\",\"msg\":\"hi\"}\n");
 
         let sent = Event::SmsSent { reference: "r1".into(), ok: true, err: None };
         assert_eq!(sent.to_line(), "{\"t\":\"sms_sent\",\"ref\":\"r1\",\"ok\":true}\n");

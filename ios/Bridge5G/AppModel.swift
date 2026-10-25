@@ -11,6 +11,8 @@ final class AppModel {
     let store = MessageStore()
     private(set) var status = ModemStatus()
     private(set) var lastError: String?
+    /// Latest informational message from the bridge (e.g. factory-reset countdown).
+    private(set) var notice: String?
     /// Hotspot credentials as last reported by the bridge (nil until requested).
     private(set) var wifi: WifiCredentials?
     private(set) var wifiSaveState: WifiSaveState = .idle
@@ -57,6 +59,11 @@ final class AppModel {
             if let ssid = msg["ssid"] as? String, let pass = msg["pass"] as? String {
                 wifi = WifiCredentials(ssid: ssid, pass: pass)
                 if wifiSaveState == .saving { wifiSaveState = .saved }
+            }
+        case "notice":
+            if let text = msg["msg"] as? String {
+                notice = text
+                notify(from: "5G Bridge", body: text)
             }
         case "err" where msg["ctx"] as? String == "wifi_set":
             wifiSaveState = .failed(msg["msg"] as? String ?? "The bridge rejected the settings.")

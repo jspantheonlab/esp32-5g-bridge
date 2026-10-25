@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct StatusView: View {
     @Environment(AppModel.self) private var model
@@ -6,6 +7,24 @@ struct StatusView: View {
     var body: some View {
         NavigationStack {
             List {
+                if model.link.pairingLost {
+                    Section {
+                        Label("The bridge was reset and no longer recognises this iPhone.", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text("Open Settings → Bluetooth, tap ⓘ next to 5G-Bridge, choose Forget This Device, then come back here and enter the passkey when asked.")
+                            .font(.footnote)
+                        Button("Open Settings") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                        }
+                    }
+                }
+
+                if let notice = model.notice {
+                    Section {
+                        Label(notice, systemImage: "info.circle")
+                    }
+                }
+
                 Section("Bluetooth link") {
                     LabeledContent("State", value: model.link.state.rawValue.capitalized)
                     if model.link.state == .scanning {
