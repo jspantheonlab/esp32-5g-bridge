@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  bridge-core:
+    name: bridge-core tests (host)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firmware-rs/bridge-core
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - run: cargo fmt --check
+      - run: cargo test
+      - run: cargo clippy --all-targets -- -D warnings
+
+  firmware-c:
+    name: C firmware (ESP-IDF)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.5
+          target: esp32s3
+          path: firmware
+
+  firmware-rust:
+    name: Rust firmware (esp-idf-svc)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firmware-rs/firmware
+    steps:
+      - uses: actions/checkout@v7
+      - uses: esp-rs/xtensa-toolchain@v1.7
+        with:
+          buildtargets: esp32s3
+          ldproxy: true
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            firmware-rs/firmware/.embuild
+            firmware-rs/firmware/target
+          key: rust-fw-${{ hashFiles('firmware-rs/firmware/Cargo.lock', 'firmware-rs/firmware/sdkconfig.defaults') }}
+          restore-keys: rust-fw-
+      - run: cargo build --release
+      - run: cargo clippy --release -- -D warnings
+
+  ios:
+    name: iOS app (simulator build)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v7
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - run: >
+          xcodebuild -project Bridge5G.xcodeproj -target Bridge5G
+          -sdk iphonesimulator -configuration Debug
+          CODE_SIGNING_ALLOWED=NO build

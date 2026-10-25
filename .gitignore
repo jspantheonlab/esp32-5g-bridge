@@ -1,0 +1,22 @@
+# ESP-IDF
+firmware/build/
+firmware/managed_components/
+firmware/dependencies.lock
+firmware/sdkconfig
+firmware/sdkconfig.old
+
+# Xcode / XcodeGen
+ios/*.xcodeproj
+ios/build/
+ios/DerivedData/
+xcuserdata/
+*.xcworkspace
+
+.DS_Store
+.vscode/
+.idea/
+
+# Rust firmware
+firmware-rs/**/target/
+firmware-rs/firmware/.embuild/
+firmware-rs/bridge-core/Cargo.lock

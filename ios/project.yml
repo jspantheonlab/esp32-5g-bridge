@@ -1,0 +1,28 @@
+name: Bridge5G
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  Bridge5G:
+    type: application
+    platform: iOS
+    sources: [Bridge5G]
+    info:
+      path: Bridge5G/Info.plist
+      properties:
+        CFBundleDisplayName: 5G Bridge
+        UILaunchScreen: {}
+        UIBackgroundModes:
+          - bluetooth-central
+          - audio
+          - voip
+        NSBluetoothAlwaysUsageDescription: Connects to your 5G Bridge to receive calls and messages.
+        NSMicrophoneUsageDescription: Your voice is sent to the 5G Bridge during calls.
+        NSLocalNetworkUsageDescription: Call audio is streamed to the 5G Bridge over its Wi-Fi hotspot.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.bridge5g
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO

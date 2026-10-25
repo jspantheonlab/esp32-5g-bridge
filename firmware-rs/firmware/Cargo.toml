@@ -1,0 +1,33 @@
+[package]
+name = "bridge5g"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+rust-version = "1.77"
+
+[[bin]]
+name = "bridge5g"
+harness = false
+
+[profile.release]
+opt-level = "s"
+
+[profile.dev]
+debug = true
+opt-level = "z"
+
+[dependencies]
+bridge-core = { path = "../bridge-core" }
+anyhow = "1"
+log = "0.4"
+esp-idf-svc = "0.53"
+esp32-nimble = "0.13"
+
+[build-dependencies]
+embuild = "0.33"
+
+# esp_modem (C++) is used through a small C shim so its config macros stay in C.
+[[package.metadata.esp-idf-sys.extra_components]]
+component_dirs = ["components/modem_shim"]
+bindings_header = "src/bindings.h"
+bindings_module = "modem_shim"

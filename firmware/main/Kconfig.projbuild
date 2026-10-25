@@ -1,0 +1,151 @@
+menu "5G Bridge"
+
+    menu "Modem (UART + CMUX)"
+        config BRIDGE_MODEM_UART_PORT
+            int "UART port"
+            range 1 2
+            default 1
+
+        config BRIDGE_MODEM_TX_GPIO
+            int "ESP32 TX -> modem RXD"
+            default 17
+
+        config BRIDGE_MODEM_RX_GPIO
+            int "ESP32 RX <- modem TXD"
+            default 18
+
+        config BRIDGE_MODEM_RTS_GPIO
+            int "ESP32 RTS -> modem CTS"
+            default 15
+
+        config BRIDGE_MODEM_CTS_GPIO
+            int "ESP32 CTS <- modem RTS"
+            default 16
+
+        config BRIDGE_MODEM_BAUD
+            int "Target UART baud rate"
+            default 921600
+            help
+                The firmware first tries this rate, then falls back to 115200 and
+                switches the modem with AT+IPR. Use 3000000 if your module supports it.
+
+        config BRIDGE_MODEM_PWRKEY_GPIO
+            int "PWRKEY GPIO (-1 = not connected)"
+            range -1 48
+            default 21
+
+        config BRIDGE_MODEM_PWRKEY_ACTIVE_HIGH
+            bool "PWRKEY driven through an NPN/N-MOSFET (GPIO high = PWRKEY low)"
+            default y
+
+        config BRIDGE_MODEM_APN
+            string "APN"
+            default "internet"
+
+        config BRIDGE_SIM_PIN
+            string "SIM PIN (empty if the SIM has no PIN)"
+            default ""
+
+        config BRIDGE_ENABLE_IMS
+            bool "Enable IMS (VoLTE / VoNR) on the modem"
+            default y
+            help
+                Required for voice calls on networks without 2G/3G.
+    endmenu
+
+    menu "Wi-Fi hotspot"
+        config BRIDGE_AP_SSID
+            string "SSID"
+            default "5G-Bridge"
+
+        config BRIDGE_AP_PASSWORD
+            string "Password (min 8 chars)"
+            default "change-me-please"
+
+        config BRIDGE_AP_CHANNEL
+            int "Channel"
+            range 1 13
+            default 6
+
+        config BRIDGE_AP_MAX_CONN
+            int "Max clients"
+            range 1 10
+            default 4
+    endmenu
+
+    menu "Bluetooth control link"
+        config BRIDGE_BLE_NAME
+            string "BLE device name"
+            default "5G-Bridge"
+
+        config BRIDGE_BLE_PASSKEY
+            int "Pairing passkey (6 digits, entered on the iPhone)"
+            range 0 999999
+            default 123456
+    endmenu
+
+    menu "Power (custom board)"
+        config BRIDGE_I2C_SDA_GPIO
+            int "I2C SDA (fuel gauge + charger)"
+            default 8
+
+        config BRIDGE_I2C_SCL_GPIO
+            int "I2C SCL (fuel gauge + charger)"
+            default 9
+
+        config BRIDGE_POWER_BUTTON_GPIO
+            int "Power button GPIO (RTC-capable, wakes from low-battery shutdown)"
+            default 2
+    endmenu
+
+    menu "Voice audio (modem PCM <-> I2S <-> UDP)"
+        config BRIDGE_PCM_BCLK_GPIO
+            int "PCM_CLK"
+            default 4
+
+        config BRIDGE_PCM_WS_GPIO
+            int "PCM_SYNC"
+            default 5
+
+        config BRIDGE_PCM_DIN_GPIO
+            int "ESP32 DIN <- modem PCM_DOUT"
+            default 6
+
+        config BRIDGE_PCM_DOUT_GPIO
+            int "ESP32 DOUT -> modem PCM_DIN"
+            default 7
+
+        choice BRIDGE_PCM_RATE
+            prompt "PCM sample rate"
+            default BRIDGE_PCM_RATE_8K
+            config BRIDGE_PCM_RATE_8K
+                bool "8 kHz (narrowband)"
+            config BRIDGE_PCM_RATE_16K
+                bool "16 kHz (wideband, VoLTE AMR-WB)"
+        endchoice
+
+        config BRIDGE_PCM_SAMPLE_RATE
+            int
+            default 16000 if BRIDGE_PCM_RATE_16K
+            default 8000
+
+        config BRIDGE_I2S_MASTER
+            bool "ESP32 is PCM clock master"
+            default n
+            help
+                Default: the modem is PCM master and drives PCM_CLK/PCM_SYNC.
+
+        config BRIDGE_PCM_DAI_CMD
+            string "Modem digital-audio-interface AT command (empty = skip)"
+            default "AT+QDAI=1,0,0,2,0,1,1,1" if BRIDGE_PCM_RATE_16K
+            default "AT+QDAI=1,0,0,1,0,0,1,1"
+            help
+                Quectel syntax: io,mode(0=master),fsync(0=short),clock,format(0=16-bit linear),
+                sample(0=8k,1=16k),slots,slot_map. Verify against your module's AT manual.
+
+        config BRIDGE_AUDIO_UDP_PORT
+            int "UDP port for call audio"
+            default 5004
+    endmenu
+
+endmenu
